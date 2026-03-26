@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(py --version)",
+      "Bash(py -3 --version)",
+      "Bash(where python:*)",
+      "Bash(where python3:*)",
+      "Bash(where py:*)",
+      "Bash(ls /c/Python*)",
+      "Read(//c/Users/gopal/AppData/Local/Programs/**)",
+      "Read(//c/Users/gopal/AppData/Roaming/**)",
+      "Read(//c/ProgramData/miniconda3/**)",
+      "Read(//c/ProgramData/anaconda3/**)",
+      "Read(//c/Users/gopal/**)",
+      "Bash(PYTHON=\"/c/Users/gopal/AppData/Roaming/uv/python/cpython-3.14.3-windows-x86_64-none/python.exe\")",
+      "Bash(\"$PYTHON\" --version)",
+      "Bash(\"$PYTHON\" -m pip --version)",
+      "Read(//e/Projects/Manoj/NextReel source venv/Scripts/**)",
+      "Bash(pip install:*)"
+    ]
+  }
+}

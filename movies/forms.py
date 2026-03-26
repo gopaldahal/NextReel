@@ -1,0 +1,42 @@
+from django import forms
+
+from .models import Movie
+
+
+class MovieForm(forms.ModelForm):
+    """For admin panel movie management."""
+
+    class Meta:
+        model = Movie
+        fields = ['title', 'genres', 'year', 'description', 'poster', 'movielens_id']
+        widgets = {
+            'title': forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Movie title'}),
+            'year': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Release year'}),
+            'description': forms.Textarea(attrs={'class': 'form-textarea', 'placeholder': 'Movie description...', 'rows': 5}),
+            'poster': forms.FileInput(attrs={'class': 'form-input'}),
+            'movielens_id': forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'MovieLens ID'}),
+            'genres': forms.SelectMultiple(attrs={'class': 'form-input'}),
+        }
+
+
+class SearchForm(forms.Form):
+    q = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-input', 'placeholder': 'Search movies...'}),
+    )
+    genre = forms.IntegerField(
+        required=False,
+        widget=forms.HiddenInput(),
+    )
+    year_from = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'From year'}),
+    )
+    year_to = forms.IntegerField(
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'To year'}),
+    )
+    min_rating = forms.FloatField(
+        required=False,
+        widget=forms.NumberInput(attrs={'class': 'form-input', 'placeholder': 'Min rating', 'step': '0.1', 'min': '0', 'max': '5'}),
+    )

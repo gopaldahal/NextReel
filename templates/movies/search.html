@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}
+  {% if search_query %}Search: {{ search_query }}{% else %}Search Movies{% endif %} — NextReel
+{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     SEARCH HERO
+============================================================ -->
+<section class="section section--search-hero">
+  <h1 class="section__title" style="margin-bottom:1.5rem;">Find Your Film</h1>
+
+  <form method="get" action="{% url 'movies:search' %}" class="search-form">
+    <div class="search-bar search-bar--large">
+      <input
+        type="text"
+        name="q"
+        id="search-input"
+        value="{{ search_query|default:'' }}"
+        placeholder="Search by title, genre, or year..."
+        class="search-bar__input"
+        autofocus
+        aria-label="Search movies"
+      />
+      <button type="submit" class="search-bar__btn btn btn--primary">
+        &#128269; Search
+      </button>
+    </div>
+
+    <!-- Filters row -->
+    <div class="filter-bar" style="margin-top:1rem; flex-wrap:wrap; gap:0.75rem; align-items:flex-end;">
+
+      <!-- Genre filter -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label" for="filter-genre">Genre</label>
+        <select name="genre" id="filter-genre" class="form-input" style="min-width:140px;">
+          <option value="">All Genres</option>
+          {% for genre in genres %}
+          <option value="{{ genre.pk }}"
+            {% if selected_genre == genre.pk %}selected{% endif %}>
+            {{ genre.name }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Year From -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label" for="filter-year-from">Year From</label>
+        <input
+          type="number"
+          name="year_from"
+          id="filter-year-from"
+          value="{{ year_from|default:'' }}"
+          placeholder="e.g. 1990"
+          class="form-input"
+          style="width:110px;"
+          min="1900"
+          max="2099"
+        />
+      </div>
+
+      <!-- Year To -->
+      <div class="form-group" style="margin:0;">
+        <label class="form-label" for="filter-year-to">Year To</label>
+        <input
+          type="number"
+          name="year_to"
+          id="filter-year-to"
+          value="{{ year_to|default:'' }}"
+          placeholder="e.g. 2024"
+          class="form-input"
+          style="width:110px;"
+          min="1900"
+          max="2099"
+        />
+      </div>
+
+      <div style="display:flex; gap:0.5rem; align-items:flex-end; padding-bottom:2px;">
+        <button type="submit" class="btn btn--primary btn--sm">Apply Filters</button>
+        {% if search_query or selected_genre or year_from or year_to %}
+        <a href="{% url 'movies:search' %}" class="btn btn--ghost btn--sm">Reset</a>
+        {% endif %}
+      </div>
+    </div>
+  </form>
+</section>
+
+<!-- ============================================================
+     RESULTS
+============================================================ -->
+<section class="section">
+
+  <!-- Results header -->
+  {% if search_query or selected_genre or year_from or year_to %}
+  <div class="section__header" style="margin-bottom:1.5rem;">
+    <h2 class="section__title" style="font-size:1.1rem; font-weight:500; color:var(--text-muted);">
+      {% if movies %}
+        {{ movies|length }} result{{ movies|length|pluralize }}
+        {% if search_query %} for &ldquo;<strong style="color:var(--text);">{{ search_query }}</strong>&rdquo;{% endif %}
+        {% if selected_genre %} in <strong style="color:var(--text);">{{ selected_genre_name }}</strong>{% endif %}
+        {% if year_from and year_to %} ({{ year_from }}–{{ year_to }}){% elif year_from %} (from {{ year_from }}){% elif year_to %} (up to {{ year_to }}){% endif %}
+      {% else %}
+        No results
+        {% if search_query %} for &ldquo;<strong style="color:var(--text);">{{ search_query }}</strong>&rdquo;{% endif %}
+      {% endif %}
+    </h2>
+  </div>
+  {% endif %}
+
+  <!-- Results grid -->
+  {% if movies %}
+  <div class="movie-grid">
+    {% for movie in movies %}
+    <article class="movie-card">
+      <div class="movie-card__poster">
+        <a href="{% url 'movies:detail' movie.pk %}">
+          <img
+            src="{{ movie.poster_url }}"
+            alt="{{ movie.title }} poster"
+            loading="lazy"
+            onerror="this.src='{% static 'images/default_poster.svg' %}'"
+          />
+        </a>
+        <div class="movie-card__overlay">
+          <a href="{% url 'movies:detail' movie.pk %}" class="btn btn--primary btn--sm">Details</a>
+          {% if request.user.is_authenticated %}
+          <a href="{% url 'movies:watchlist' movie.pk %}"
+             class="btn btn--ghost btn--sm watchlist-btn">
+            + Watchlist
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="movie-card__body">
+        <h3 class="movie-card__title">
+          <a href="{% url 'movies:detail' movie.pk %}">{{ movie.title }}</a>
+        </h3>
+        <div class="movie-card__meta">
+          <span>{{ movie.year }}</span>
+          {% for genre in movie.genres.all|slice:":2" %}
+          <span class="badge badge--genre">{{ genre.name }}</span>
+          {% endfor %}
+        </div>
+        <div class="movie-card__rating">
+          {% with rating=movie.avg_rating|default:0 %}
+          {% for i in "12345" %}
+            {% if forloop.counter <= rating %}
+            <span class="star star--filled">&#9733;</span>
+            {% else %}
+            <span class="star star--empty">&#9734;</span>
+            {% endif %}
+          {% endfor %}
+          <span class="movie-card__rating-value">
+            {{ movie.avg_rating|floatformat:1|default:"—" }}
+          </span>
+          {% endwith %}
+        </div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  {% elif search_query or selected_genre or year_from or year_to %}
+  <!-- Empty state after search -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128269;</div>
+    <p class="empty-state__text">
+      No movies matched your search.
+    </p>
+    <a href="{% url 'movies:search' %}" class="btn btn--ghost" style="margin-top:1rem;">
+      Clear Search &amp; Try Again
+    </a>
+  </div>
+
+  {% else %}
+  <!-- Initial state — no query entered yet -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#127902;</div>
+    <p class="empty-state__text">Enter a title, genre, or year above to search our library.</p>
+    <a href="{% url 'movies:list' %}" class="btn btn--secondary" style="margin-top:1rem;">
+      Browse All Movies
+    </a>
+  </div>
+  {% endif %}
+
+</section>
+
+{% endblock %}

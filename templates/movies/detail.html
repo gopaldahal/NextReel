@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ movie.title }} ({{ movie.year }}) — NextReel{% endblock %}
+
+{% block content %}
+
+<!-- ============================================================
+     HERO BANNER  (poster as blurred background)
+============================================================ -->
+<div class="hero hero--detail"
+     style="--detail-poster: url('{{ movie.poster_url }}');">
+  <div class="hero__bg hero__bg--blurred" aria-hidden="true"></div>
+  <div class="hero__overlay" aria-hidden="true"></div>
+
+  <div class="hero__content hero__content--detail">
+
+    <!-- Poster Column -->
+    <div class="detail-poster-wrap">
+      <img
+        class="detail-poster"
+        src="{{ movie.poster_url }}"
+        alt="{{ movie.title }} poster"
+        onerror="this.src='{% static 'images/default_poster.svg' %}'"
+      />
+    </div>
+
+    <!-- Info Column -->
+    <div class="detail-info">
+      <h1 class="detail-title">{{ movie.title }}</h1>
+      <p class="detail-year">{{ movie.year }}</p>
+
+      <!-- Genres -->
+      <div class="detail-genres">
+        {% for genre in genre_list %}
+        <a href="{% url 'movies:list' %}?genre={{ genre.pk }}" class="badge badge--genre">{{ genre.name }}</a>
+        {% endfor %}
+      </div>
+
+      <!-- Star Rating -->
+      <div class="detail-rating">
+        <div class="movie-card__rating">
+          {% with rating=movie.avg_rating|default:0 %}
+          {% for i in "12345" %}
+            {% if forloop.counter <= rating %}
+            <span class="star star--filled">&#9733;</span>
+            {% else %}
+            <span class="star star--empty">&#9734;</span>
+            {% endif %}
+          {% endfor %}
+          <span class="detail-rating-value">
+            {{ movie.avg_rating|floatformat:1|default:"No ratings" }}
+          </span>
+          <span class="detail-rating-count" style="color:var(--text-muted); font-size:0.85rem;">
+            ({{ movie.total_ratings }} rating{{ movie.total_ratings|pluralize }})
+          </span>
+          {% endwith %}
+        </div>
+      </div>
+
+      <!-- Description / Overview -->
+      {% if movie.description %}
+      <p class="detail-description">{{ movie.description }}</p>
+      {% endif %}
+
+      <!-- Action Buttons -->
+      <div class="detail-actions">
+        {% if request.user.is_authenticated %}
+        <!-- Record Watch -->
+        <form method="post" action="{% url 'movies:watch' movie.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--primary">
+            &#9654; Watch Now
+          </button>
+        </form>
+
+        <!-- Toggle Watchlist -->
+        <a href="{% url 'movies:watchlist' movie.pk %}"
+           class="btn btn--secondary watchlist-btn{% if in_watchlist %} watchlist-btn--active{% endif %}">
+          {% if in_watchlist %}
+            &#10003; In Watchlist
+          {% else %}
+            + Add to Watchlist
+          {% endif %}
+        </a>
+        {% else %}
+        <a href="{% url 'users:login' %}?next={{ request.path }}" class="btn btn--primary">
+          Login to Watch
+        </a>
+        {% endif %}
+      </div>
+    </div><!-- /detail-info -->
+  </div><!-- /hero__content -->
+</div><!-- /hero -->
+
+<!-- ============================================================
+     TABS: REVIEWS / RELATED
+============================================================ -->
+<div class="section detail-tabs-section">
+
+  <!-- Tab Nav (CSS-only using radio buttons) -->
+  <input type="radio" name="detail-tab" id="tab-reviews" class="detail-tab__radio" checked hidden />
+  <input type="radio" name="detail-tab" id="tab-related" class="detail-tab__radio" hidden />
+
+  <div class="detail-tab-nav">
+    <label for="tab-reviews" class="detail-tab-nav__item">
+      Reviews
+      <span class="badge" style="margin-left:0.4rem;">{{ reviews|length }}</span>
+    </label>
+    <label for="tab-related" class="detail-tab-nav__item">Related Movies</label>
+  </div>
+
+  <!-- ── TAB: REVIEWS ── -->
+  <div class="detail-tab-panel" id="panel-reviews">
+
+    <!-- Add / Edit Review Form -->
+    {% if request.user.is_authenticated %}
+    <div class="card" style="margin-bottom:2rem;">
+      <div class="card__header">
+        <h3>{% if user_review %}Edit Your Review{% else %}Write a Review{% endif %}</h3>
+      </div>
+      <div class="card__body">
+        <form method="post" action="{% url 'reviews:add' movie.pk %}">
+          {% csrf_token %}
+
+          <!-- Star rating picker -->
+          <div class="form-group">
+            <label class="form-label">Your Rating</label>
+            <div class="star-picker">
+              {% for val in "54321" %}
+              <input type="radio" name="rating" id="star-{{ val }}" value="{{ val }}"
+                     {% if user_review and user_review.rating == val|add:"0" %}checked{% endif %} />
+              <label for="star-{{ val }}" class="star-picker__star" title="{{ val }} star{{ val|pluralize }}">&#9733;</label>
+              {% endfor %}
+            </div>
+            {% if form.rating.errors %}
+            <span class="form-error">{{ form.rating.errors }}</span>
+            {% endif %}
+          </div>
+
+          <!-- Review Text -->
+          <div class="form-group">
+            <label class="form-label" for="review-text">Your Review</label>
+            <textarea
+              id="review-text"
+              name="text"
+              class="form-textarea"
+              rows="4"
+              placeholder="Share your thoughts about this film..."
+            >{% if user_review %}{{ user_review.text }}{% endif %}</textarea>
+            {% if form.text.errors %}
+            <span class="form-error">{{ form.text.errors }}</span>
+            {% endif %}
+          </div>
+
+          <div style="display:flex; gap:1rem; align-items:center;">
+            <button type="submit" class="btn btn--primary">
+              {% if user_review %}Update Review{% else %}Submit Review{% endif %}
+            </button>
+            {% if user_review %}
+            <a href="{% url 'reviews:delete' user_review.pk %}"
+               class="btn btn--danger btn--sm"
+               onclick="return confirm('Delete your review?');">
+              Delete
+            </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="empty-state" style="margin-bottom:2rem;">
+      <div class="empty-state__icon">&#9998;</div>
+      <p class="empty-state__text">
+        <a href="{% url 'users:login' %}?next={{ request.path }}">Log in</a> to write a review.
+      </p>
+    </div>
+    {% endif %}
+
+    <!-- Existing Reviews -->
+    {% if reviews %}
+    {% for review in reviews %}
+    <div class="review-card">
+      <div class="review-card__header">
+        <div class="review-card__avatar">
+          {{ review.user.username|slice:":1"|upper }}
+        </div>
+        <div class="review-card__meta">
+          <strong>{{ review.user.username }}</strong>
+          <span style="color:var(--text-muted); font-size:0.8rem;">
+            {{ review.created_at|date:"N j, Y" }}
+          </span>
+        </div>
+        <div class="review-card__rating">
+          {% for i in "12345" %}
+            {% if forloop.counter <= review.rating %}
+            <span class="star star--filled">&#9733;</span>
+            {% else %}
+            <span class="star star--empty">&#9734;</span>
+            {% endif %}
+          {% endfor %}
+        </div>
+        {% if review.sentiment %}
+        <span class="review-card__sentiment badge
+          {% if review.sentiment == 'positive' %}badge--positive
+          {% elif review.sentiment == 'negative' %}badge--negative
+          {% else %}badge--neutral{% endif %}">
+          {{ review.sentiment|capfirst }}
+        </span>
+        {% endif %}
+        {% if request.user == review.user or request.user.is_staff %}
+        <a href="{% url 'reviews:delete' review.pk %}"
+           class="btn btn--danger btn--sm btn--icon"
+           style="margin-left:auto;"
+           onclick="return confirm('Delete this review?');"
+           title="Delete review">&#10005;</a>
+        {% endif %}
+      </div>
+      <div class="review-card__body">
+        {{ review.text }}
+      </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">&#128172;</div>
+      <p class="empty-state__text">No reviews yet. Be the first to review!</p>
+    </div>
+    {% endif %}
+  </div><!-- /panel-reviews -->
+
+  <!-- ── TAB: RELATED MOVIES ── -->
+  <div class="detail-tab-panel" id="panel-related">
+    {% if related_movies %}
+    <div class="movie-row">
+      {% for rel in related_movies %}
+      <article class="movie-card">
+        <div class="movie-card__poster">
+          <a href="{% url 'movies:detail' rel.pk %}">
+            <img
+              src="{{ rel.poster_url }}"
+              alt="{{ rel.title }} poster"
+              loading="lazy"
+              onerror="this.src='{% static 'images/default_poster.svg' %}'"
+            />
+          </a>
+          <div class="movie-card__overlay">
+            <a href="{% url 'movies:detail' rel.pk %}" class="btn btn--primary btn--sm">Details</a>
+          </div>
+        </div>
+        <div class="movie-card__body">
+          <h3 class="movie-card__title">
+            <a href="{% url 'movies:detail' rel.pk %}">{{ rel.title }}</a>
+          </h3>
+          <div class="movie-card__meta">
+            <span>{{ rel.year }}</span>
+            {% for genre in rel.genres.all|slice:":1" %}
+            <span class="badge badge--genre">{{ genre.name }}</span>
+            {% endfor %}
+          </div>
+          <div class="movie-card__rating">
+            {% with rating=rel.avg_rating|default:0 %}
+            {% for i in "12345" %}
+              {% if forloop.counter <= rating %}
+              <span class="star star--filled">&#9733;</span>
+              {% else %}
+              <span class="star star--empty">&#9734;</span>
+              {% endif %}
+            {% endfor %}
+            {% endwith %}
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">&#127902;</div>
+      <p class="empty-state__text">No related movies found.</p>
+    </div>
+    {% endif %}
+  </div><!-- /panel-related -->
+
+</div><!-- /detail-tabs-section -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/* CSS-tab panel switching — show only the active panel */
+document.addEventListener('DOMContentLoaded', function () {
+  var radios = document.querySelectorAll('.detail-tab__radio');
+  var panels = document.querySelectorAll('.detail-tab-panel');
+  function updatePanels() {
+    radios.forEach(function (radio, i) {
+      if (panels[i]) panels[i].style.display = radio.checked ? 'block' : 'none';
+    });
+  }
+  radios.forEach(function (radio) {
+    radio.addEventListener('change', updatePanels);
+  });
+  updatePanels();
+});
+</script>
+{% endblock %}
