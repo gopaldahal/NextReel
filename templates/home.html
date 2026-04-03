@@ -13,7 +13,7 @@
   <div class="hero__content">
     <h1 class="hero__title">Discover Your Next<br />Favorite Film</h1>
     <p class="hero__subtitle">
-      Personalized movie recommendations powered by AI — tailored to your taste,
+      Personalized movie recommendations tailored to your taste,
       mood, and viewing history.
     </p>
     <div class="hero__actions">
@@ -68,9 +68,9 @@
         <div class="movie-card__overlay">
           <a href="{% url 'movies:detail' movie.pk %}" class="btn btn--primary btn--sm">Details</a>
           {% if request.user.is_authenticated %}
-          <a href="{% url 'movies:watchlist' movie.pk %}" class="btn btn--ghost btn--sm watchlist-btn">
-            + Watchlist
-          </a>
+          <button class="btn btn--ghost btn--sm watchlist-toggle"
+            data-url="{% url 'movies:watchlist' movie.pk %}"
+            data-csrf="{{ csrf_token }}">+ Watchlist</button>
           {% endif %}
         </div>
       </div>
@@ -235,7 +235,7 @@
     <div class="card__body" style="text-align:center;">
       <h2>Get Personalized Recommendations</h2>
       <p style="color:var(--text-muted); margin: 0.75rem 0 1.5rem;">
-        Create a free account and let our AI learn your taste.
+        Create a free account and get recommendations based on your taste.
       </p>
       <a href="{% url 'users:register' %}" class="btn btn--primary">Join NextReel Free</a>
       <a href="{% url 'users:login' %}" class="btn btn--ghost" style="margin-left:1rem;">Sign In</a>

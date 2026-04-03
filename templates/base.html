@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>{% block title %}NextReel — AI Movie Recommendations{% endblock %}</title>
+  <title>{% block title %}NextReel — Discover Your Next Favourite Film{% endblock %}</title>
   <link rel="stylesheet" href="{% static 'css/main.css' %}" />
   {% block extra_css %}{% endblock %}
 </head>
@@ -130,7 +130,7 @@
         <span>&#9654;</span> NextReel
       </span>
       <span class="footer__copy">
-        &copy; 2024 NextReel &mdash; Powered by AI Recommendations
+        &copy; {% now "Y" %} NextReel &mdash; Powered by Smart Recommendations
       </span>
       <div class="footer__links">
         <a href="{% url 'movies:list' %}" class="footer__link">Movies</a>
@@ -147,5 +147,65 @@
   ============================================================ -->
   <script src="{% static 'js/theme-toggle.js' %}"></script>
   {% block extra_js %}{% endblock %}
+
+  <script>
+  // ── AJAX Watchlist Toggle ──────────────────────────────────────
+  function showToast(msg, type) {
+    const container = document.querySelector('.toast-container') || (() => {
+      const c = document.createElement('div');
+      c.className = 'toast-container';
+      c.setAttribute('aria-live', 'polite');
+      document.body.appendChild(c);
+      return c;
+    })();
+    const toast = document.createElement('div');
+    toast.className = 'toast toast--' + type;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3500);
+  }
+
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.watchlist-toggle');
+    if (!btn) return;
+    e.preventDefault();
+    const url = btn.dataset.url;
+    const csrf = btn.dataset.csrf;
+    btn.disabled = true;
+
+    fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrf,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.in_watchlist) {
+        btn.textContent = '✓ Added';
+        btn.classList.add('btn--active');
+        showToast(data.message, 'success');
+        btn.disabled = false;
+      } else {
+        // If this is a remove button on the watchlist page, fade out the card
+        if (btn.dataset.remove) {
+          const card = btn.closest('.movie-card');
+          if (card) {
+            card.style.transition = 'opacity 0.3s ease';
+            card.style.opacity = '0';
+            setTimeout(() => card.remove(), 300);
+          }
+        } else {
+          btn.textContent = '+ Watchlist';
+          btn.classList.remove('btn--active');
+          btn.disabled = false;
+        }
+        showToast(data.message, 'info');
+      }
+    })
+    .catch(() => { btn.disabled = false; });
+  });
+  </script>
 </body>
 </html>

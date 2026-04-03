@@ -206,7 +206,7 @@
     <div class="card__body">
       <h2 style="margin-bottom:0.75rem;">Unlock Your Personalized Picks</h2>
       <p style="color:var(--text-muted); margin-bottom:1.5rem;">
-        Create a free account, rate some movies, and our AI engine will craft
+        Create a free account, rate some movies, and we&rsquo;ll craft
         recommendations tailored just for you.
       </p>
       <a href="{% url 'users:register' %}" class="btn btn--primary">Join NextReel Free</a>
@@ -234,79 +234,79 @@
      PERSONALIZED RECOMMENDATIONS
 ============================================================ -->
 
-<section class="section">
+<!-- Page header -->
+<div class="section section--page-header">
   <div class="section__header">
     <div>
       <h1 class="section__title">Recommended For You</h1>
       <p style="color:var(--text-muted); margin-top:0.35rem;">
-        Based on your ratings and viewing preferences
+        Your personal cinema, handpicked from your taste — because great films deserve to be found.
       </p>
     </div>
     <a href="{% url 'movies:list' %}" class="btn btn--ghost">Browse All</a>
   </div>
+</div>
 
-  {% if recommendations %}
-  <div class="movie-grid">
-    {% for movie in recommendations %}
-    <article class="movie-card">
-      <div class="movie-card__poster">
-        <a href="{% url 'movies:detail' movie.pk %}">
-          <img
-            src="{{ movie.poster_url }}"
-            alt="{{ movie.title }} poster"
-            loading="lazy"
-            onerror="this.src='{% static 'images/default_poster.svg' %}'"
-          />
-        </a>
-        <div class="movie-card__overlay">
-          <a href="{% url 'movies:detail' movie.pk %}" class="btn btn--primary btn--sm">Details</a>
-          <a href="{% url 'movies:watchlist' movie.pk %}"
-             class="btn btn--ghost btn--sm watchlist-btn">
-            + Watchlist
+{% if genre_sections %}
+  {% for genre_name, movies in genre_sections %}
+  <section class="section" style="padding-top:2rem; padding-bottom:0.5rem;">
+    <div class="section__header" style="margin-bottom:1rem;">
+      <h2 class="section__title">{{ genre_name }}</h2>
+    </div>
+    <div class="movie-row movie-row--four">
+      {% for movie in movies %}
+      <article class="movie-card">
+        <div class="movie-card__poster">
+          <a href="{% url 'movies:detail' movie.pk %}">
+            <img src="{{ movie.poster_url }}" alt="{{ movie.title }} poster" loading="lazy"
+              onerror="this.src='{% static 'images/default_poster.svg' %}'" />
           </a>
+          <div class="movie-card__overlay">
+            <a href="{% url 'movies:detail' movie.pk %}" class="btn btn--primary btn--sm">Details</a>
+            <button class="btn btn--ghost btn--sm watchlist-toggle"
+              data-url="{% url 'movies:watchlist' movie.pk %}"
+              data-csrf="{{ csrf_token }}">+ Watchlist</button>
+          </div>
         </div>
-      </div>
-      <div class="movie-card__body">
-        <h3 class="movie-card__title">
-          <a href="{% url 'movies:detail' movie.pk %}">{{ movie.title }}</a>
-        </h3>
-        <div class="movie-card__meta">
-          <span>{{ movie.year }}</span>
-          {% for genre in movie.genres.all|slice:":2" %}
-          <span class="badge badge--genre">{{ genre.name }}</span>
-          {% endfor %}
+        <div class="movie-card__body">
+          <h3 class="movie-card__title">
+            <a href="{% url 'movies:detail' movie.pk %}">{{ movie.title }}</a>
+          </h3>
+          <div class="movie-card__meta">
+            <span>{{ movie.year }}</span>
+            {% for genre in movie.genres.all|slice:":2" %}
+            <span class="badge badge--genre">{{ genre.name }}</span>
+            {% endfor %}
+          </div>
+          <div class="movie-card__rating">
+            {% with rating=movie.avg_rating|default:0 %}
+            {% for i in "12345" %}
+              {% if forloop.counter <= rating %}<span class="star star--filled">&#9733;</span>
+              {% else %}<span class="star star--empty">&#9734;</span>
+              {% endif %}
+            {% endfor %}
+            <span class="movie-card__rating-value">{{ movie.avg_rating|floatformat:1|default:"—" }}</span>
+            {% endwith %}
+          </div>
         </div>
-        <div class="movie-card__rating">
-          {% with rating=movie.avg_rating|default:0 %}
-          {% for i in "12345" %}
-            {% if forloop.counter <= rating %}
-            <span class="star star--filled">&#9733;</span>
-            {% else %}
-            <span class="star star--empty">&#9734;</span>
-            {% endif %}
-          {% endfor %}
-          <span class="movie-card__rating-value">
-            {{ movie.avg_rating|floatformat:1|default:"—" }}
-          </span>
-          {% endwith %}
-        </div>
-      </div>
-    </article>
-    {% endfor %}
-  </div>
-  {% else %}
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+{% else %}
+<section class="section">
   <div class="empty-state">
     <div class="empty-state__icon">&#127916;</div>
     <p class="empty-state__text">
-      We don&rsquo;t have enough data to generate recommendations yet.
-      <br />Rate a few more movies and check back soon!
+      We don&rsquo;t have enough data yet. Rate a few more movies and check back!
     </p>
     <a href="{% url 'movies:list' %}" class="btn btn--secondary" style="margin-top:1.5rem;">
       Browse &amp; Rate Movies
     </a>
   </div>
-  {% endif %}
 </section>
+{% endif %}
 
 {% endif %}
 

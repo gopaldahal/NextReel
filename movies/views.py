@@ -1,13 +1,14 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import F, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 from django.views.generic import ListView, DetailView, TemplateView
 
 from .forms import SearchForm
+from reviews.forms import ReviewForm
 from .models import Genre, Movie, Watchlist, WatchHistory
 
 
@@ -33,14 +34,17 @@ class MovieListView(View):
         form = SearchForm(request.GET)
 
         # Apply filters
-        genre_id = request.GET.get('genre_id')
+        genre_id = request.GET.get('genre_id') or request.GET.get('genre')
         q = request.GET.get('q', '').strip()
         year_from = request.GET.get('year_from')
         year_to = request.GET.get('year_to')
         min_rating = request.GET.get('min_rating')
 
         if q:
-            movies = movies.filter(Q(title__icontains=q) | Q(description__icontains=q))
+            title_q = Q()
+            for word in q.split():
+                title_q &= Q(title__icontains=word)
+            movies = movies.filter(title_q)
 
         if genre_id:
             try:
@@ -118,6 +122,7 @@ class MovieDetailView(View):
             'in_watchlist': in_watchlist,
             'related_movies': related_movies,
             'genre_list': movie.genres.all(),
+            'form': ReviewForm(),
         }
         return render(request, self.template_name, context)
 
@@ -127,17 +132,21 @@ class SearchView(View):
     paginate_by = 20
 
     def get(self, request):
-        movies = Movie.objects.all().prefetch_related('genres')
         form = SearchForm(request.GET)
 
         q = request.GET.get('q', '').strip()
-        genre_id = request.GET.get('genre_id')
-        year_from = request.GET.get('year_from')
-        year_to = request.GET.get('year_to')
-        min_rating = request.GET.get('min_rating')
+        genre_id = request.GET.get('genre_id') or request.GET.get('genre')
+        year_from = request.GET.get('year_from', '').strip()
+        year_to = request.GET.get('year_to', '').strip()
+        min_rating = request.GET.get('min_rating', '').strip()
+
+        movies = Movie.objects.all().prefetch_related('genres')
 
         if q:
-            movies = movies.filter(Q(title__icontains=q) | Q(description__icontains=q))
+            title_q = Q()
+            for word in q.split():
+                title_q &= Q(title__icontains=word)
+            movies = movies.filter(title_q)
 
         if genre_id:
             try:
@@ -169,12 +178,29 @@ class SearchView(View):
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
 
+        selected_genre_name = None
+        if genre_id:
+            try:
+                selected_genre = Genre.objects.get(pk=int(genre_id))
+                selected_genre_name = selected_genre.name
+            except (Genre.DoesNotExist, ValueError, TypeError):
+                selected_genre = None
+                selected_genre_name = None
+        else:
+            selected_genre = None
+
         context = {
             'page_obj': page_obj,
             'movies': page_obj,
             'genres': Genre.objects.all().order_by('name'),
             'form': form,
+            'search_query': q,
             'query': q,
+            'selected_genre': genre_id,
+            'selected_genre_name': selected_genre_name,
+            'year_from': year_from,
+            'year_to': year_to,
+            'min_rating': min_rating,
             'total_count': paginator.count,
         }
         return render(request, self.template_name, context)
@@ -201,6 +227,9 @@ class AddToWatchlistView(LoginRequiredMixin, View):
             return JsonResponse({'status': 'ok', 'in_watchlist': in_watchlist, 'message': message})
 
         messages.success(request, message)
+        next_url = request.POST.get('next') or request.META.get('HTTP_REFERER', '')
+        if next_url:
+            return redirect(next_url)
         return redirect('movies:detail', pk=pk)
 
 
@@ -211,7 +240,7 @@ class RecordWatchView(LoginRequiredMixin, View):
         movie = get_object_or_404(Movie, pk=pk)
 
         WatchHistory.objects.create(user=request.user, movie=movie)
-        Movie.objects.filter(pk=pk).update(total_watches=movie.total_watches + 1)
+        Movie.objects.filter(pk=pk).update(total_watches=F('total_watches') + 1)
 
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({'status': 'ok', 'message': f'Marked "{movie.title}" as watched.'})

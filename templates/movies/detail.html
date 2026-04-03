@@ -8,8 +8,7 @@
 <!-- ============================================================
      HERO BANNER  (poster as blurred background)
 ============================================================ -->
-<div class="hero hero--detail"
-     style="--detail-poster: url('{{ movie.poster_url }}');">
+<div class="hero hero--detail" style="--detail-poster: url('{{ movie.poster_url }}');">
   <div class="hero__bg hero__bg--blurred" aria-hidden="true"></div>
   <div class="hero__overlay" aria-hidden="true"></div>
 
@@ -17,12 +16,8 @@
 
     <!-- Poster Column -->
     <div class="detail-poster-wrap">
-      <img
-        class="detail-poster"
-        src="{{ movie.poster_url }}"
-        alt="{{ movie.title }} poster"
-        onerror="this.src='{% static 'images/default_poster.svg' %}'"
-      />
+      <img class="detail-poster" src="{{ movie.poster_url }}" alt="{{ movie.title }} poster"
+        onerror="this.src='{% static 'images/default_poster.svg' %}'" />
     </div>
 
     <!-- Info Column -->
@@ -42,19 +37,18 @@
         <div class="movie-card__rating">
           {% with rating=movie.avg_rating|default:0 %}
           {% for i in "12345" %}
-            {% if forloop.counter <= rating %}
-            <span class="star star--filled">&#9733;</span>
+          {% if forloop.counter <= rating %} <span class="star star--filled">&#9733;</span>
             {% else %}
             <span class="star star--empty">&#9734;</span>
             {% endif %}
-          {% endfor %}
-          <span class="detail-rating-value">
-            {{ movie.avg_rating|floatformat:1|default:"No ratings" }}
-          </span>
-          <span class="detail-rating-count" style="color:var(--text-muted); font-size:0.85rem;">
-            ({{ movie.total_ratings }} rating{{ movie.total_ratings|pluralize }})
-          </span>
-          {% endwith %}
+            {% endfor %}
+            <span class="detail-rating-value">
+              {{ movie.avg_rating|floatformat:1|default:"No ratings" }}
+            </span>
+            <span class="detail-rating-count" style="color:var(--text-muted); font-size:0.85rem;">
+              ({{ movie.total_ratings }} rating{{ movie.total_ratings|pluralize }})
+            </span>
+            {% endwith %}
         </div>
       </div>
 
@@ -75,14 +69,12 @@
         </form>
 
         <!-- Toggle Watchlist -->
-        <a href="{% url 'movies:watchlist' movie.pk %}"
-           class="btn btn--secondary watchlist-btn{% if in_watchlist %} watchlist-btn--active{% endif %}">
-          {% if in_watchlist %}
-            &#10003; In Watchlist
-          {% else %}
-            + Add to Watchlist
-          {% endif %}
-        </a>
+        <form method="post" action="{% url 'movies:watchlist' movie.pk %}" style="display:inline;">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--secondary watchlist-btn{% if in_watchlist %} watchlist-btn--active{% endif %}">
+            {% if in_watchlist %}&#10003; In Watchlist{% else %}+ Add to Watchlist{% endif %}
+          </button>
+        </form>
         {% else %}
         <a href="{% url 'users:login' %}?next={{ request.path }}" class="btn btn--primary">
           Login to Watch
@@ -126,11 +118,11 @@
           <!-- Star rating picker -->
           <div class="form-group">
             <label class="form-label">Your Rating</label>
-            <div class="star-picker">
+            <div class="star-rating--input">
               {% for val in "54321" %}
               <input type="radio" name="rating" id="star-{{ val }}" value="{{ val }}"
-                     {% if user_review and user_review.rating == val|add:"0" %}checked{% endif %} />
-              <label for="star-{{ val }}" class="star-picker__star" title="{{ val }} star{{ val|pluralize }}">&#9733;</label>
+                {% if user_review and user_review.rating|stringformat:"s" == val %}checked{% endif %} />
+              <label for="star-{{ val }}" title="{{ val }} star{{ val|pluralize }}">&#9733;</label>
               {% endfor %}
             </div>
             {% if form.rating.errors %}
@@ -141,15 +133,10 @@
           <!-- Review Text -->
           <div class="form-group">
             <label class="form-label" for="review-text">Your Review</label>
-            <textarea
-              id="review-text"
-              name="text"
-              class="form-textarea"
-              rows="4"
-              placeholder="Share your thoughts about this film..."
-            >{% if user_review %}{{ user_review.text }}{% endif %}</textarea>
-            {% if form.text.errors %}
-            <span class="form-error">{{ form.text.errors }}</span>
+            <textarea id="review-text" name="review_text" class="form-textarea" rows="4"
+              placeholder="Share your thoughts about this film...">{% if user_review %}{{ user_review.review_text }}{% endif %}</textarea>
+            {% if form.review_text.errors %}
+            <span class="form-error">{{ form.review_text.errors }}</span>
             {% endif %}
           </div>
 
@@ -158,11 +145,11 @@
               {% if user_review %}Update Review{% else %}Submit Review{% endif %}
             </button>
             {% if user_review %}
-            <a href="{% url 'reviews:delete' user_review.pk %}"
-               class="btn btn--danger btn--sm"
-               onclick="return confirm('Delete your review?');">
-              Delete
-            </a>
+            <form method="post" action="{% url 'reviews:delete' user_review.pk %}" style="display:inline;"
+              onsubmit="return confirm('Delete your review?');">
+              {% csrf_token %}
+              <button type="submit" class="btn btn--danger btn--sm">Delete</button>
+            </form>
             {% endif %}
           </div>
         </form>
@@ -193,12 +180,11 @@
         </div>
         <div class="review-card__rating">
           {% for i in "12345" %}
-            {% if forloop.counter <= review.rating %}
-            <span class="star star--filled">&#9733;</span>
+          {% if forloop.counter <= review.rating %} <span class="star star--filled">&#9733;</span>
             {% else %}
             <span class="star star--empty">&#9734;</span>
             {% endif %}
-          {% endfor %}
+            {% endfor %}
         </div>
         {% if review.sentiment %}
         <span class="review-card__sentiment badge
@@ -209,15 +195,15 @@
         </span>
         {% endif %}
         {% if request.user == review.user or request.user.is_staff %}
-        <a href="{% url 'reviews:delete' review.pk %}"
-           class="btn btn--danger btn--sm btn--icon"
-           style="margin-left:auto;"
-           onclick="return confirm('Delete this review?');"
-           title="Delete review">&#10005;</a>
+        <form method="post" action="{% url 'reviews:delete' review.pk %}" style="display:inline; margin-left:auto;"
+          onsubmit="return confirm('Delete this review?');">
+          {% csrf_token %}
+          <button type="submit" class="btn btn--danger btn--sm btn--icon" title="Delete review">&#10005;</button>
+        </form>
         {% endif %}
       </div>
       <div class="review-card__body">
-        {{ review.text }}
+        {{ review.review_text }}
       </div>
     </div>
     {% endfor %}
@@ -237,12 +223,8 @@
       <article class="movie-card">
         <div class="movie-card__poster">
           <a href="{% url 'movies:detail' rel.pk %}">
-            <img
-              src="{{ rel.poster_url }}"
-              alt="{{ rel.title }} poster"
-              loading="lazy"
-              onerror="this.src='{% static 'images/default_poster.svg' %}'"
-            />
+            <img src="{{ rel.poster_url }}" alt="{{ rel.title }} poster" loading="lazy"
+              onerror="this.src='{% static 'images/default_poster.svg' %}'" />
           </a>
           <div class="movie-card__overlay">
             <a href="{% url 'movies:detail' rel.pk %}" class="btn btn--primary btn--sm">Details</a>
@@ -261,13 +243,12 @@
           <div class="movie-card__rating">
             {% with rating=rel.avg_rating|default:0 %}
             {% for i in "12345" %}
-              {% if forloop.counter <= rating %}
-              <span class="star star--filled">&#9733;</span>
+            {% if forloop.counter <= rating %} <span class="star star--filled">&#9733;</span>
               {% else %}
               <span class="star star--empty">&#9734;</span>
               {% endif %}
-            {% endfor %}
-            {% endwith %}
+              {% endfor %}
+              {% endwith %}
           </div>
         </div>
       </article>
@@ -287,19 +268,19 @@
 
 {% block extra_js %}
 <script>
-/* CSS-tab panel switching — show only the active panel */
-document.addEventListener('DOMContentLoaded', function () {
-  var radios = document.querySelectorAll('.detail-tab__radio');
-  var panels = document.querySelectorAll('.detail-tab-panel');
-  function updatePanels() {
-    radios.forEach(function (radio, i) {
-      if (panels[i]) panels[i].style.display = radio.checked ? 'block' : 'none';
+  /* CSS-tab panel switching — show only the active panel */
+  document.addEventListener('DOMContentLoaded', function () {
+    var radios = document.querySelectorAll('.detail-tab__radio');
+    var panels = document.querySelectorAll('.detail-tab-panel');
+    function updatePanels() {
+      radios.forEach(function (radio, i) {
+        if (panels[i]) panels[i].style.display = radio.checked ? 'block' : 'none';
+      });
+    }
+    radios.forEach(function (radio) {
+      radio.addEventListener('change', updatePanels);
     });
-  }
-  radios.forEach(function (radio) {
-    radio.addEventListener('change', updatePanels);
+    updatePanels();
   });
-  updatePanels();
-});
 </script>
 {% endblock %}

@@ -18,21 +18,25 @@ class AddReviewView(LoginRequiredMixin, View):
 
         # Check if user already reviewed this movie
         existing_review = Review.objects.filter(user=request.user, movie=movie).first()
-        if existing_review:
-            messages.warning(request, 'You have already reviewed this movie. Delete your existing review first.')
-            return redirect('movies:detail', pk=movie_id)
-
+        
         form = ReviewForm(request.POST)
         if form.is_valid():
-            review = form.save(commit=False)
-            review.user = request.user
-            review.movie = movie
-
-            # Run sentiment analysis
-            review_text = form.cleaned_data.get('review_text', '')
-            review.sentiment = analyze_sentiment(review_text)
-
-            review.save()
+            if existing_review:
+                # Update existing review
+                existing_review.rating = form.cleaned_data['rating']
+                existing_review.review_text = form.cleaned_data['review_text']
+                existing_review.sentiment = analyze_sentiment(form.cleaned_data['review_text'])
+                existing_review.save()
+                review = existing_review
+                message = f'Your review for "{movie.title}" has been updated!'
+            else:
+                # Create new review
+                review = form.save(commit=False)
+                review.user = request.user
+                review.movie = movie
+                review.sentiment = analyze_sentiment(form.cleaned_data['review_text'])
+                review.save()
+                message = f'Your review for "{movie.title}" has been posted!'
 
             # Recalculate movie avg_rating from all reviews
             _update_movie_rating(movie)
@@ -51,7 +55,7 @@ class AddReviewView(LoginRequiredMixin, View):
                 except Exception:
                     pass  # Non-blocking: retrain failure should not break review submission
 
-            messages.success(request, f'Your review for "{movie.title}" has been posted!')
+            messages.success(request, message)
         else:
             for field, errors in form.errors.items():
                 for error in errors:
