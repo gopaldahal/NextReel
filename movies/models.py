@@ -20,6 +20,7 @@ class Movie(models.Model):
     year = models.IntegerField(null=True, blank=True)
     description = models.TextField(blank=True, default='')
     poster = models.ImageField(upload_to='movies/posters/', null=True, blank=True)
+    poster_url_external = models.URLField(max_length=500, blank=True, default='')
     movielens_id = models.IntegerField(unique=True)
     avg_rating = models.FloatField(default=0.0)
     total_ratings = models.IntegerField(default=0)
@@ -34,6 +35,8 @@ class Movie(models.Model):
     def poster_url(self):
         if self.poster and self.poster.name:
             return self.poster.url
+        if self.poster_url_external:
+            return self.poster_url_external
         return '/static/images/default_poster.svg'
 
     def get_star_range(self):
