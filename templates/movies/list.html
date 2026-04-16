@@ -32,7 +32,7 @@
     <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Search movies by title..."
       class="search-bar__input" aria-label="Search movies" />
     {% if selected_genre %}
-    <input type="hidden" name="genre" value="{{ selected_genre }}" />
+    <input type="hidden" name="genre" value="{{ selected_genre.pk }}" />
     {% endif %}
     <button type="submit" class="search-bar__btn btn btn--primary">Search</button>
     {% if search_query or selected_genre %}
@@ -114,7 +114,7 @@
   {% if page_obj.paginator.num_pages > 1 %}
   <nav class="pagination" aria-label="Movie list pages">
     {% if page_obj.has_previous %}
-    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre.pk }}{% endif %}"
       class="pagination__item">
       <span class="pagination__link">&laquo; Prev</span>
     </a>
@@ -130,12 +130,12 @@
       <span class="pagination__link pagination__link--active">{{ num }}</span>
     </span>
     {% elif num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %} <a
-      href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+      href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre.pk }}{% endif %}"
       class="pagination__item">
       <span class="pagination__link">{{ num }}</span>
       </a>
       {% elif num == 1 or num == page_obj.paginator.num_pages %}
-      <a href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+      <a href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre.pk }}{% endif %}"
         class="pagination__item">
         <span class="pagination__link">{{ num }}</span>
       </a>
@@ -143,7 +143,7 @@
       {% endfor %}
 
       {% if page_obj.has_next %}
-      <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre }}{% endif %}"
+      <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if selected_genre %}&genre={{ selected_genre.pk }}{% endif %}"
         class="pagination__item">
         <span class="pagination__link">Next &raquo;</span>
       </a>
