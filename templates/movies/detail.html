@@ -61,20 +61,18 @@
       <div class="detail-actions">
         {% if request.user.is_authenticated %}
         <!-- Record Watch -->
-        <form method="post" action="{% url 'movies:watch' movie.pk %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--primary">
-            &#9654; Watch Now
-          </button>
-        </form>
+        <button type="button" class="btn btn--primary watch-now-btn"
+          data-url="{% url 'movies:watch' movie.pk %}"
+          data-csrf="{{ csrf_token }}">
+          &#9654; Watch Now
+        </button>
 
         <!-- Toggle Watchlist -->
-        <form method="post" action="{% url 'movies:watchlist' movie.pk %}" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="btn btn--secondary watchlist-btn{% if in_watchlist %} watchlist-btn--active{% endif %}">
-            {% if in_watchlist %}&#10003; In Watchlist{% else %}+ Add to Watchlist{% endif %}
-          </button>
-        </form>
+        <button type="button" class="btn btn--secondary watchlist-toggle{% if in_watchlist %} btn--active{% endif %}"
+          data-url="{% url 'movies:watchlist' movie.pk %}"
+          data-csrf="{{ csrf_token }}">
+          {% if in_watchlist %}&#10003; In Watchlist{% else %}+ Add to Watchlist{% endif %}
+        </button>
         {% else %}
         <a href="{% url 'users:login' %}?next={{ request.path }}" class="btn btn--primary">
           Login to Watch
@@ -268,6 +266,25 @@
 
 {% block extra_js %}
 <script>
+  /* Watch Now AJAX */
+  document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.watch-now-btn');
+    if (!btn) return;
+    e.preventDefault();
+    btn.disabled = true;
+    fetch(btn.dataset.url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': btn.dataset.csrf, 'X-Requested-With': 'XMLHttpRequest' },
+    })
+    .then(r => r.json())
+    .then(data => {
+      btn.textContent = '✓ Watched';
+      btn.disabled = false;
+      if (window.showToast) showToast(data.message, 'success');
+    })
+    .catch(() => { btn.disabled = false; });
+  });
+
   /* CSS-tab panel switching — show only the active panel */
   document.addEventListener('DOMContentLoaded', function () {
     var radios = document.querySelectorAll('.detail-tab__radio');
