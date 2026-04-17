@@ -7,13 +7,20 @@ import pandas as pd
 from django.conf import settings
 
 
+_svd_cache = {'data': None, 'mtime': None}
+
+
 def load_svd_model():
-    """Load the trained SVD model from disk."""
+    """Load the trained SVD model, caching it in memory. Reloads if file changes."""
     model_path = settings.SVD_MODEL_PATH
     if not os.path.exists(model_path):
         return None
-    with open(model_path, 'rb') as f:
-        return pickle.load(f)
+    mtime = os.path.getmtime(model_path)
+    if _svd_cache['data'] is None or mtime != _svd_cache['mtime']:
+        with open(model_path, 'rb') as f:
+            _svd_cache['data'] = pickle.load(f)
+        _svd_cache['mtime'] = mtime
+    return _svd_cache['data']
 
 
 def get_recommendations(user_id, n=20):
@@ -27,7 +34,7 @@ def get_recommendations(user_id, n=20):
 
     model_data = load_svd_model()
     if model_data is None:
-        return list(Movie.objects.order_by('-avg_rating')[:n])
+        return list(Movie.objects.order_by('-avg_rating').prefetch_related('genres')[:n])
 
     try:
         user_factors = model_data['user_factors']
@@ -40,7 +47,7 @@ def get_recommendations(user_id, n=20):
 
         str_user_id = str(user_id)
         if str_user_id not in user_index:
-            return list(Movie.objects.order_by('-avg_rating')[:n])
+            return list(Movie.objects.order_by('-avg_rating').prefetch_related('genres')[:n])
 
         uidx = user_index[str_user_id]
         u_vec = user_factors[uidx]
@@ -50,10 +57,10 @@ def get_recommendations(user_id, n=20):
         rated_movie_ids = set(
             Review.objects.filter(user_id=user_id).values_list('movie_id', flat=True)
         )
-        candidate_movies = list(Movie.objects.exclude(id__in=rated_movie_ids))
+        candidate_movies = list(Movie.objects.exclude(id__in=rated_movie_ids).prefetch_related('genres'))
 
         if not candidate_movies:
-            return list(Movie.objects.order_by('-avg_rating')[:n])
+            return list(Movie.objects.order_by('-avg_rating').prefetch_related('genres')[:n])
 
         predictions = []
         for movie in candidate_movies:
@@ -70,7 +77,7 @@ def get_recommendations(user_id, n=20):
         return [movie for movie, _ in predictions[:n]]
 
     except Exception:
-        return list(Movie.objects.order_by('-avg_rating')[:n])
+        return list(Movie.objects.order_by('-avg_rating').prefetch_related('genres')[:n])
 
 
 def get_cold_start_recommendations(n=12):
@@ -79,9 +86,9 @@ def get_cold_start_recommendations(n=12):
     """
     from movies.models import Movie
     return {
-        'trending': list(Movie.objects.order_by('-total_watches')[:n]),
-        'top_rated': list(Movie.objects.order_by('-avg_rating')[:n]),
-        'new_releases': list(Movie.objects.order_by('-year', '-avg_rating')[:n]),
+        'trending': list(Movie.objects.order_by('-total_watches').prefetch_related('genres')[:n]),
+        'top_rated': list(Movie.objects.order_by('-avg_rating').prefetch_related('genres')[:n]),
+        'new_releases': list(Movie.objects.order_by('-year', '-avg_rating').prefetch_related('genres')[:n]),
     }
 
 
@@ -171,6 +178,10 @@ def train_svd_model():
     model_dir.mkdir(parents=True, exist_ok=True)
     with open(settings.SVD_MODEL_PATH, 'wb') as f:
         pickle.dump(model_data, f)
+
+    # Invalidate in-memory cache so next request loads the new model
+    _svd_cache['data'] = None
+    _svd_cache['mtime'] = None
 
     print(f'SVD model saved to {settings.SVD_MODEL_PATH}')
     return model_data

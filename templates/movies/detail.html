@@ -61,10 +61,10 @@
       <div class="detail-actions">
         {% if request.user.is_authenticated %}
         <!-- Record Watch -->
-        <button type="button" class="btn btn--primary watch-now-btn"
+        <button type="button" class="btn btn--primary watch-now-btn{% if already_watched %} btn--watched{% endif %}"
           data-url="{% url 'movies:watch' movie.pk %}"
           data-csrf="{{ csrf_token }}">
-          &#9654; Watch Now
+          {% if already_watched %}&#10003; Watched{% else %}&#9654; Watch Now{% endif %}
         </button>
 
         <!-- Toggle Watchlist -->

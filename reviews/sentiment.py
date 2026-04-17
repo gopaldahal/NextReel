@@ -16,17 +16,23 @@ def preprocess_text(text):
     return text
 
 
+_sentiment_cache = {'model': None, 'vectorizer': None, 'mtime': None}
+
+
 def load_sentiment_model():
-    """Load trained model and vectorizer from pkl files."""
+    """Load trained model and vectorizer, caching in memory. Reloads if file changes."""
     model_path = settings.SENTIMENT_MODEL_PATH
     vectorizer_path = settings.SENTIMENT_VECTORIZER_PATH
     if not os.path.exists(model_path) or not os.path.exists(vectorizer_path):
         return None, None
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
-    with open(vectorizer_path, 'rb') as f:
-        vectorizer = pickle.load(f)
-    return model, vectorizer
+    mtime = os.path.getmtime(model_path)
+    if _sentiment_cache['model'] is None or mtime != _sentiment_cache['mtime']:
+        with open(model_path, 'rb') as f:
+            _sentiment_cache['model'] = pickle.load(f)
+        with open(vectorizer_path, 'rb') as f:
+            _sentiment_cache['vectorizer'] = pickle.load(f)
+        _sentiment_cache['mtime'] = mtime
+    return _sentiment_cache['model'], _sentiment_cache['vectorizer']
 
 
 def analyze_sentiment(text):
@@ -145,6 +151,11 @@ def train_sentiment_model(dataset_path):
         pickle.dump(model, f)
     with open(settings.SENTIMENT_VECTORIZER_PATH, 'wb') as f:
         pickle.dump(vectorizer, f)
+
+    # Invalidate in-memory cache so next request loads the new model
+    _sentiment_cache['model'] = None
+    _sentiment_cache['vectorizer'] = None
+    _sentiment_cache['mtime'] = None
 
     print('Sentiment model saved.')
     return accuracy

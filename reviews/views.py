@@ -1,3 +1,5 @@
+import threading
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Avg
@@ -46,12 +48,13 @@ class AddReviewView(LoginRequiredMixin, View):
                 request.user.is_new_user = False
                 request.user.save(update_fields=['is_new_user'])
 
-            # Auto-retrain SVD every 50 new reviews
+            # Auto-retrain SVD every 50 new reviews — runs in background thread
             total_reviews = Review.objects.count()
             if total_reviews % 50 == 0:
                 try:
                     from recommendations.engine import train_svd_model
-                    train_svd_model()
+                    t = threading.Thread(target=train_svd_model, daemon=True)
+                    t.start()
                 except Exception:
                     pass  # Non-blocking: retrain failure should not break review submission
 

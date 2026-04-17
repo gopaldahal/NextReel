@@ -83,13 +83,22 @@ class MovieListView(View):
             except (Genre.DoesNotExist, ValueError, TypeError):
                 pass
 
+        watchlisted_ids = set()
+        if request.user.is_authenticated:
+            watchlisted_ids = set(
+                Watchlist.objects.filter(
+                    user=request.user,
+                    movie_id__in=[m.pk for m in page_obj.object_list],
+                ).values_list('movie_id', flat=True)
+            )
+
         context = {
             'page_obj': page_obj,
             'movies': page_obj,
             'genres': Genre.objects.all().order_by('name'),
             'selected_genre': selected_genre,
-            'form': form,
-            'query': q,
+            'search_query': q,
+            'watchlisted_ids': watchlisted_ids,
             'total_count': paginator.count,
         }
         return render(request, self.template_name, context)
@@ -105,10 +114,12 @@ class MovieDetailView(View):
 
         user_review = None
         in_watchlist = False
+        already_watched = False
 
         if request.user.is_authenticated:
             user_review = Review.objects.filter(user=request.user, movie=movie).first()
             in_watchlist = Watchlist.objects.filter(user=request.user, movie=movie).exists()
+            already_watched = WatchHistory.objects.filter(user=request.user, movie=movie).exists()
 
         reviews = movie.reviews.select_related('user').order_by('-created_at')[:10]
         related_movies = Movie.objects.filter(
@@ -120,6 +131,7 @@ class MovieDetailView(View):
             'reviews': reviews,
             'user_review': user_review,
             'in_watchlist': in_watchlist,
+            'already_watched': already_watched,
             'related_movies': related_movies,
             'genre_list': movie.genres.all(),
             'form': ReviewForm(),
@@ -195,8 +207,7 @@ class SearchView(View):
             'genres': Genre.objects.all().order_by('name'),
             'form': form,
             'search_query': q,
-            'query': q,
-            'selected_genre': genre_id,
+            'selected_genre': selected_genre,
             'selected_genre_name': selected_genre_name,
             'year_from': year_from,
             'year_to': year_to,
