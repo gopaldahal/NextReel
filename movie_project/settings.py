@@ -7,6 +7,14 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'nextreel-secret-key-change-in-
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '*').split(',')
 
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost:8000',
+    'http://127.0.0.1:8000',
+    'https://*.loca.lt',
+    'https://*.ngrok.io',
+    'https://*.ngrok-free.app',
+]
+
 INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
